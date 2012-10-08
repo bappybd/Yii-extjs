@@ -1,3 +1,14 @@
-assets/
-protected/runtime/
+*.swp
+.buildpath
+.project
+.settings
+assets/*
+js/extJs/*
+protected/runtime/*
 themes/classic/views/
+protected/data/*.db
+protected/tests/report/*
+protected/commands/locks
+protected/commands/logs
+ad/**
+temp
