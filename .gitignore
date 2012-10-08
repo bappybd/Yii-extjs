@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 *.swp
 .buildpath
 .project
@@ -5,10 +6,14 @@
 assets/*
 js/extJs/*
 protected/runtime/*
-themes/classic/views/
 protected/data/*.db
 protected/tests/report/*
 protected/commands/locks
 protected/commands/logs
 ad/**
 temp
+=======
+assets/
+protected/runtime/
+themes/classic/views/
+>>>>>>> e39a405eebad6e49237040f5a74f94d2e14afb47

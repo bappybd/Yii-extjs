@@ -1,4 +1,4 @@
-Yii-extjs
-=========
+Yii-Hospital-Management
+=======================
 
-Yii-extjs implementation
+Yii-Hospital Management
