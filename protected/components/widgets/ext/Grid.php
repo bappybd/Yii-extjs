@@ -40,7 +40,7 @@ class Grid extends CWidget{
             if(empty($this->gridHeader)){
                $this->gridHeader = "Grid $this->modelName";
             }
-            
+$this->model = new User();
             //set Grid Colmns
             $this->createColumn();
             
@@ -55,8 +55,7 @@ class Grid extends CWidget{
       }
    }
    
-   public function run(){  
-         
+   public function run(){
       try{
          if($this->model !== null){
             $this->render('grid', array());
@@ -68,6 +67,12 @@ class Grid extends CWidget{
    
    public function createColumn(){
       if($this->model !== null){
+         /*if(!isset($this->model->tableSchema)){
+            $this->createColumnForm($this->model);
+            return;
+         }*/
+      $this->createColumnForm($this->model);
+            return;
          $tableSchema              = $this->model->getTableSchema();
          $this->modelColumns       = $tableSchema->columns;
          $this->modelColumnsLabels = $this->model->attributeLabels();
@@ -113,6 +118,64 @@ class Grid extends CWidget{
       }
    }
    
+   public function createColumnForm($model){
+       $fieldType                = 'string';
+       $this->modelColumns       = $this->model->attributes;
+       $this->modelColumnsLabels = $this->model->attributeLabels();
+
+       if(count($this->modelColumns)){
+          foreach($this->modelColumns as $attributeName => $thisValue){
+             $column                  = new StdClass();
+            
+             $fieldObject            = new StdClass();
+             $fieldObject->name      = $attributeName;
+             $fieldObject->formName  = CHtml::resolveName($this->model, $attributeName);
+             $fieldObject->formId    = CHtml::getIdByName($fieldObject->formName);
+             $fieldObject->label     = $this->model->getAttributeLabel($attributeName);
+             $fieldObject->type      = $fieldType;
+
+            /*if(in_array($thisColumn->dbType, array('date','datetime'))){
+               $column->xtype        = 'datecolumn';
+            }*/
+            $column->header          = $fieldObject->label;
+            $column->dataIndex       = $fieldObject->name;
+            $column->text            = $fieldObject->label;
+            $column->id              = $fieldObject->name;
+            $column->flex            = 1;
+            $column->filterable      = true;
+            if(in_array($fieldObject->type, array('date', 'datetime'))){
+               $column->renderer     = "Ext.util.Format.dateRenderer('m/d/Y')";
+            }
+            
+            //grid filter
+            $column->filter   = $this->getGridColumnFilter($fieldObject);
+            
+            //add column editor
+            if($this->enableEdit){
+               //$column->editor =  $this->getColumnEditor($thisColumn);
+            }
+
+            $this->gridColumns[] = $column;
+
+            //adding grid fields
+            $field       = $this->getGridFieldType($fieldObject);
+
+            $this->gridFields[] = $field;
+          }
+       }
+       
+       /*echo "<pre>";print_r($this->gridColumns);echo "<pre/>";
+       echo "<pre>";print_r($this->gridFields);echo "<pre/>";exit;*/
+   }
+   
+   public function getGridColumnFilter($field){
+      $filter           = new StdClass();//adding column filter
+      $filter->type     = $field->type;
+      $filter->disabled = false;               
+      
+      return $filter;
+   }
+   
    public function getGridColumnFilterType($type){
    
       return $type;
@@ -124,7 +187,7 @@ class Grid extends CWidget{
       $field->name = $column->name;
       $field->type = $column->type ;
       
-      if(in_array($column->dbType, array('date', 'datetime'))){
+      if(in_array($column->type, array('date', 'datetime'))){
          $field->type              = 'date';
          $field->dateFormat        = 'Y-m-d';
       }
@@ -149,7 +212,11 @@ class Grid extends CWidget{
    public function getGridSorterColumn(){
       $sorter              = array();
       $sortersArray        = array();
-      $sortField           = $this->model->getPrimaryKey();
+      $sortField           = "";
+      
+      if(isset($this->model->primaryKey)){
+         $sortField           = $this->model->getPrimaryKey();
+      }
 
       if(empty($sortField)){
          $sortField = $this->model->safeAttributeNames[0];
