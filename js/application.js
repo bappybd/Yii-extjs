@@ -336,7 +336,7 @@ Ext.require(['*']);
                                 leaf: true,
                                 text: "View Users",
                                 id: "view-users",
-                                url: "/yii/demos/ext4yii-1.1/docapp/index.php/application/go?example=chart-line"
+                                url: "/yii/demos/docudex/user/manage"
                             }]
                         },
                         {

@@ -6,6 +6,8 @@
  */
 class Grid extends CWidget{
    
+   public $dataProvider;
+   
    public $enableEdit = false;
    public $api = array('read' => '', 'create' => '', 'update' => '', 'destroy' => '');
    
@@ -14,14 +16,16 @@ class Grid extends CWidget{
    public $modelColumns;
    public $modelColumnsLabels;
    
-   public $fields  = array();
-   public $columns = array();
-   public $sorters = array();
+   public $fields         = array();
+   public $columns        = array();
+   public $displayColumns = array();
+   public $sorters        = array();
    
    public $gridFields  = array();
    public $gridColumns = array();
    public $gridSorters = array();
    
+   public $idProperty = "id";
    public $gridHeader;
    public $remoteUrl  = "";
    public $remoteSort = 1;
@@ -30,6 +34,12 @@ class Grid extends CWidget{
    const DEFAULT_SORT_DIRECTION = 'ASC';
 
    public function init(){
+       if($this->dataProvider instanceof CActiveDataProvider){
+          $this->model = $this->dataProvider->model;
+       }
+      
+      
+   
       if(!empty($this->model)){
          $this->model = new $this->model;
          if($this->model !== null){
@@ -40,7 +50,7 @@ class Grid extends CWidget{
             if(empty($this->gridHeader)){
                $this->gridHeader = "Grid $this->modelName";
             }
-$this->model = new User();
+            
             //set Grid Colmns
             $this->createColumn();
             
@@ -67,12 +77,8 @@ $this->model = new User();
    
    public function createColumn(){
       if($this->model !== null){
-         /*if(!isset($this->model->tableSchema)){
-            $this->createColumnForm($this->model);
-            return;
-         }*/
-      $this->createColumnForm($this->model);
-            return;
+         
+$this->initColumns($this->model); return;
          $tableSchema              = $this->model->getTableSchema();
          $this->modelColumns       = $tableSchema->columns;
          $this->modelColumnsLabels = $this->model->attributeLabels();
@@ -118,25 +124,71 @@ $this->model = new User();
       }
    }
    
-   public function createColumnForm($model){
+   /**
+    * Creates column objects and initializes them.
+    */
+   public function initColumns($model){
        $fieldType                = 'string';
-       $this->modelColumns       = $this->model->attributes;
-       $this->modelColumnsLabels = $this->model->attributeLabels();
+       
+       
+       if($this->dataProvider instanceof CActiveDataProvider){
+          $this->modelColumns = $this->dataProvider->model->attributeNames();
+          $this->idProperty   = $this->dataProvider->model->primaryKey;
+       }
+       else if($this->dataProvider instanceof IDataProvider){
+          // use the keys of the first row of data as the default columns
+          $data = $this->dataProvider->getData();
+          if(isset($data[0]) && is_array($data[0]))
+             $this->modelColumns=array_keys($data[0]);
+       }
+       
+       $this->modelColumnsLabels = $this->dataProvider->model->attributeLabels();
+
+       //set displayed columns
+       $columnsDetails = array();
+       foreach($this->columns as $thisColumn){
+           if(is_array($thisColumn)){
+              $columnName   = $thisColumn['name'];
+              $columnId     = isset($thisColumn['id'])     ? trim($thisColumn['type'])   : $columnName;
+              $columnType   = isset($thisColumn['type'])   ? trim($thisColumn['type'])   : "";
+              $columnHeader = isset($thisColumn['header']) ? trim($thisColumn['header']) : "";
+              $this->displayColumns[] = $thisColumn['name'];
+              
+           }else{
+              $columnName             = $thisColumn;
+              $columnType             = $fieldType;
+              $columnId               = $columnName;
+              $columnHeader           = "";
+              $this->displayColumns[] = $thisColumn;
+           }
+           
+           $columnsDetails[$columnName]           = array();
+           $columnsDetails[$columnName]['name']   = $columnName;
+           $columnsDetails[$columnName]['id']     = $columnName;
+           $columnsDetails[$columnName]['type']   = !empty($columnType) ? $columnType : $fieldType;
+           $columnsDetails[$columnName]['header'] = $columnHeader;
+           
+       }
 
        if(count($this->modelColumns)){
-          foreach($this->modelColumns as $attributeName => $thisValue){
-             $column                  = new StdClass();
+          foreach($this->modelColumns as $attributeName ){
+             if(!in_array($attributeName, $this->displayColumns)){
+                continue;
+             }
+                       
+             
             
              $fieldObject            = new StdClass();
              $fieldObject->name      = $attributeName;
              $fieldObject->formName  = CHtml::resolveName($this->model, $attributeName);
              $fieldObject->formId    = CHtml::getIdByName($fieldObject->formName);
              $fieldObject->label     = $this->model->getAttributeLabel($attributeName);
-             $fieldObject->type      = $fieldType;
-
-            /*if(in_array($thisColumn->dbType, array('date','datetime'))){
+             $fieldObject->type      = isset($columnsDetails[$attributeName]['type']) ? $columnsDetails[$attributeName]['type'] : $fieldType;
+            
+            $column                  = new StdClass();
+            if(in_array($fieldObject->type, array('date','datetime'))){
                $column->xtype        = 'datecolumn';
-            }*/
+            }
             $column->header          = $fieldObject->label;
             $column->dataIndex       = $fieldObject->name;
             $column->text            = $fieldObject->label;
@@ -152,7 +204,7 @@ $this->model = new User();
             
             //add column editor
             if($this->enableEdit){
-               //$column->editor =  $this->getColumnEditor($thisColumn);
+               $column->editor =  $this->getColumnEditor($fieldObject);
             }
 
             $this->gridColumns[] = $column;
@@ -199,7 +251,7 @@ $this->model = new User();
    public function getColumnEditor($column){
       $editor             = new StdClass();
       
-      if(in_array($column->dbType, array('date','datetime'))){
+      if(in_array($column->type, array('date','datetime'))){
          $editor->xtype  = 'datefield';
          $editor->format = 'Y-m-d';
       }
@@ -220,6 +272,9 @@ $this->model = new User();
 
       if(empty($sortField)){
          $sortField = $this->model->safeAttributeNames[0];
+      }
+      if(empty($this->idProperty)){
+         $this->idProperty = $this->model->safeAttributeNames[0];
       }
       
       $sorter['property']  = $sortField;
